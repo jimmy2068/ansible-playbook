@@ -1,0 +1,7 @@
+---
+- name: Install Baota Panel
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Baota Panel
+      shell: wget -O install.sh http://download.bt.cn/install/install_6.0.sh && bash install.sh ed8484bec
