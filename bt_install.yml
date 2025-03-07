@@ -2,12 +2,36 @@
 - name: Install Baota Panel
   hosts: all
   become: true
+  gather_facts: yes
   tasks:
+    - name: Check if system is Ubuntu
+      assert:
+        that: ansible_distribution == "Ubuntu"
+        msg: "This playbook is only for Ubuntu systems."
+
     - name: Download Baota Panel installation script
       get_url:
         url: http://download.bt.cn/install/install-ubuntu_6.0.sh
         dest: /tmp/install.sh
         mode: '0755'
+        timeout: 60
+      register: download_result
+      until: download_result is success
+      retries: 3
+      delay: 5
 
-    - name: Install Baota Panel with yes
-      shell: yes | bash /tmp/install.sh ed8484bec
+    - name: Install expect (if not already installed)
+      apt:
+        name: expect
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Baota Panel with expect
+      raw: |
+        expect -c '
+        spawn bash /tmp/install.sh ed8484bec
+        expect {
+          "Do you want to install Bt-Panel to the /www directory now?(y/n)" { send "y\r"; exp_continue }
+          eof
+        }
+        '
