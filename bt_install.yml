@@ -1,5 +1,5 @@
 ---
-- name: Install Baota Panel
+- name: Install Baota Panel on Ubuntu
   hosts: all
   become: true
   gather_facts: yes
@@ -14,7 +14,6 @@
         url: http://download.bt.cn/install/install-ubuntu_6.0.sh
         dest: /tmp/install.sh
         mode: '0755'
-        timeout: 60
       register: download_result
       until: download_result is success
       retries: 3
@@ -35,3 +34,16 @@
           eof
         }
         '
+      register: baota_install_result
+
+    - name: Wait for Baota Panel installation to complete
+      pause:
+        minutes: 2
+
+    - name: Get Baota Panel account information
+      shell: cat /www/server/panel/default.db
+      register: baota_account_info
+
+    - name: Display Baota Panel account information
+      debug:
+        var: baota_account_info.stdout_lines
