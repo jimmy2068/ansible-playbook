@@ -3,5 +3,11 @@
   hosts: all
   become: true
   tasks:
-    - name: Install Baota Panel
-      shell: wget -O install.sh http://download.bt.cn/install/install_6.0.sh && bash install.sh ed8484bec
+    - name: Download Baota Panel installation script
+      get_url:
+        url: http://download.bt.cn/install/install-ubuntu_6.0.sh
+        dest: /tmp/install.sh
+        mode: '0755'
+
+    - name: Install Baota Panel with yes
+      shell: yes | bash /tmp/install.sh ed8484bec
