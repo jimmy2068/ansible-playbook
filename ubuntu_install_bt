@@ -1,0 +1,64 @@
+---
+- name: Install Baota Panel on Ubuntu
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    # 检查目标主机是否为 Ubuntu 系统
+    - name: Verify Ubuntu system
+      assert:
+        that: ansible_distribution == "Ubuntu"
+        msg: "This playbook is for Ubuntu only."
+
+    # 下载宝塔面板安装脚本
+    - name: Download Baota installation script
+      get_url:
+        url: http://download.bt.cn/install/install-ubuntu_6.0.sh
+        dest: /tmp/install.sh
+        mode: '0755'
+      register: download_result
+      until: download_result is success
+      retries: 3
+      delay: 5
+
+    # 安装 expect 工具以处理交互式提示
+    - name: Install expect
+      apt:
+        name: expect
+        state: present
+
+    # 使用 expect 执行安装脚本并自动应答提示
+    - name: Install Baota Panel
+      raw: |
+        expect -c '
+        spawn bash /tmp/install.sh ed8484bec
+        expect {
+          "Do you want to install Bt-Panel to the /www directory now?(y/n)" { send "y\r"; exp_continue }
+          eof
+        }
+        '
+      register: install_result
+      failed_when: install_result.rc != 0
+
+    # 等待一段时间，确保安装完成
+    - name: Wait for installation to complete
+      pause:
+        minutes: 4
+
+    # 检查宝塔面板配置文件是否存在
+    - name: Check Baota config file existence
+      stat:
+        path: /www/server/panel/default.db
+      register: config_file
+
+    # 若配置文件存在，获取并显示账户信息
+    - name: Display Baota account info
+      debug:
+        msg: "{{ lookup('file', '/www/server/panel/default.db') }}"
+      when: config_file.stat.exists
+
+    # 若配置文件不存在，输出安装可能失败的信息
+    - name: Notify possible installation failure
+      debug:
+        msg: "Baota installation might have failed as config file not found."
+      when: not config_file.stat.exists
