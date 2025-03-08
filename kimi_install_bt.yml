@@ -1,0 +1,41 @@
+---
+- name: Deploy BT Panel on web servers
+  hosts: web_servers
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install wget
+      apt:
+        name: wget
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Download BT Panel installation script
+      get_url:
+        url: https://download.bt.cn/install/install-ubuntu_6.0.sh
+        dest: /tmp/install_bt.sh
+        mode: '0755'
+
+    - name: Execute BT Panel installation script with automatic "yes" reply
+      command: sh /tmp/install_bt.sh
+      args:
+        stdin: "yes"
+      async: 600
+      poll: 10
+      register: result
+
+    - name: Print installation result
+      debug:
+        msg: "{{ result.stdout }}"
+
+    - name: Get BT Panel account information
+      shell: cat /www/server/panel/default.pl
+      register: account_info
+
+    - name: Print account information
+      debug:
+        msg: "BT Panel Account Information: {{ account_info.stdout }}"
