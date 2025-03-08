@@ -1,0 +1,58 @@
+---
+- name: Install Baota Panel on Ubuntu
+  hosts: ubuntu_servers
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install necessary packages
+      apt:
+        name:
+          - wget
+          - curl
+          - expect
+        state: present
+
+    - name: Create expect script for Baota installation
+      copy:
+        content: |
+          #!/usr/bin/expect
+          set timeout -1
+          spawn wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh
+          expect eof
+          spawn bash install.sh
+          expect {
+            "Do you want to continue? [y/n]" {
+              send "y\r"
+              exp_continue
+            }
+            eof
+          }
+        dest: /tmp/install_bt.exp
+        mode: '0755'
+
+    - name: Run expect script to install Baota Panel
+      shell: /tmp/install_bt.exp
+      register: bt_install_result
+      ignore_errors: yes
+
+    - name: Display Baota Panel installation result
+      debug:
+        var: bt_install_result.stdout_lines
+
+    - name: Extract Baota Panel account information
+      set_fact:
+        bt_account_info: "{{ bt_install_result.stdout_lines | select('match', '.*(username|password).*') | list }}"
+
+    - name: Display Baota Panel account information
+      debug:
+        var: bt_account_info
+
+    - name: Remove expect script
+      file:
+        path: /tmp/install_bt.exp
+        state: absent
