@@ -1,0 +1,87 @@
+---
+- name: 增强版宝塔面板批量部署
+  hosts: all
+  become: yes
+  vars:
+    bt_port: 8888    # 面板端口
+    retry_count: 3    # 关键步骤重试次数
+  tasks:
+    # 阶段1：环境准备
+    - name: 安装必要依赖
+      apt:
+        name: [wget, expect, lsof, curl]
+        state: present
+        update_cache: yes
+      register: install_deps
+      retries: "{{ retry_count }}"
+      delay: 10
+      until: install_deps is succeeded
+
+    # 阶段2：下载安装脚本
+    - name: 获取宝塔安装脚本
+      get_url:
+        url: http://download.bt.cn/install/install-ubuntu_6.0.sh
+        dest: /tmp/install.sh
+        mode: 0755
+        timeout: 30
+      register: download_script
+      retries: "{{ retry_count }}"
+      delay: 15
+      until: download_script is succeeded
+
+    # 阶段3：部署自动应答脚本
+    - name: 部署增强版Expect脚本
+      template:
+        src: files/bt_install.exp.j2
+        dest: /tmp/bt_install.exp
+        mode: 0755
+
+    # 阶段4：执行安装流程
+    - name: 执行自动化安装
+      shell: /tmp/bt_install.exp
+      async: 1800    # 最大等待30分钟
+      poll: 30       # 每30秒检查进度
+      register: installation
+      environment:
+        BT_PORT: "{{ bt_port }}"
+      args:
+        executable: /usr/bin/expect
+      retries: 2
+      delay: 60
+      until: installation is succeeded
+
+    # 阶段5：安装后验证
+    - name: 验证面板服务状态
+      wait_for:
+        port: "{{ bt_port }}"
+        timeout: 300
+      register: port_check
+      retries: 3
+      delay: 20
+      until: port_check is succeeded
+
+    - name: 检查面板进程
+      shell: ps aux | grep -v grep | grep 'BT-Panel'
+      register: panel_process
+      changed_when: false
+      failed_when: panel_process.rc != 0
+
+    # 阶段6：提取安全信息
+    - name: 获取面板凭证
+      shell: |
+        if [ -f /www/server/panel/default.pl ]; then
+          echo "用户名: $(head -n1 /www/server/panel/default.pl) 密码: $(tail -n1 /www/server/panel/default.pl)"
+        else
+          echo "ERROR_CREDENTIALS_FILE_MISSING"
+        fi
+      register: bt_credentials
+      retries: 5
+      delay: 10
+      until: "'ERROR' not in bt_credentials.stdout"
+
+    - name: 显示访问信息
+      debug:
+        msg: 
+          - "面板地址: http://{{ inventory_hostname }}:{{ bt_port }}"
+          - "{{ bt_credentials.stdout_lines[0] }}"
+          - "请立即修改默认密码！"
