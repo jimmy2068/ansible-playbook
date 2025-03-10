@@ -11,16 +11,23 @@
         name: expect
         state: present
 
-    # 下载并执行宝塔面板安装脚本，同时处理交互式提示
-    - name: Download and execute Baota Panel installation script
+    # 下载宝塔面板安装脚本
+    - name: Download Baota Panel installation script
+      get_url:
+        url: http://download.bt.cn/install/install-ubuntu_6.0.sh
+        dest: /tmp/install.sh
+        mode: '0755'
+
+    # 执行宝塔面板安装脚本，同时处理交互式提示
+    - name: Execute Baota Panel installation script
       expect:
-        # 组合下载脚本和执行脚本的命令
-        command: wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
+        # 执行安装脚本
+        command: sudo bash /tmp/install.sh ed8484bec
         responses:
           # 当安装脚本提示是否安装到 /www 目录时，自动回复 'y'
           'Do you want to install Bt-Panel to the /www directory now?(y/n):': 'y'
         # 设置命令执行的超时时间为 600 秒
-        timeout: 800
+        timeout: 600
       # 将命令执行结果存储在 res 变量中
       register: res
 
