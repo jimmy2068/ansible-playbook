@@ -1,6 +1,6 @@
 ---
 - name: Install Baota Panel on Ubuntu
-  hosts: ubuntu_servers  # 这里的 ubuntu_servers 是你在 AWX 中定义的主机组名称
+  hosts: all  # 这里的 ubuntu_servers 是你在 AWX 中定义的主机组名称
   become: true  # 使用 root 权限执行任务
   gather_facts: true
 
