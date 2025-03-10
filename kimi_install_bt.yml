@@ -1,6 +1,6 @@
 ---
 - name: Deploy BT Panel on web servers
-  hosts: web_servers
+  hosts: all
   become: yes
   tasks:
     - name: Update apt cache
