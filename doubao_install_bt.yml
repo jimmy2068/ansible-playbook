@@ -1,28 +1,37 @@
 ---
-- name: Install Baota Panel on Ubuntu
-  hosts: all  # 这里的 ubuntu_servers 是你在 AWX 中定义的主机组名称
-  become: true  # 使用 root 权限执行任务
-  gather_facts: true
+# 定义目标主机，这里表示所有在清单中定义的主机
+- hosts: all
+  # 使用 root 权限执行任务
+  become: true
 
   tasks:
-    - name: Update apt cache
+    # 安装 expect 工具，用于处理交互式命令
+    - name: Install expect
       apt:
-        update_cache: yes
-      register: apt_update_result
-      until: apt_update_result is success
-      retries: 5
-      delay: 2
-
-    - name: Install necessary packages
-      apt:
-        name:
-          - wget
-          - curl
+        name: expect
         state: present
 
+    # 下载并执行宝塔面板安装脚本，同时处理交互式提示
     - name: Download and execute Baota Panel installation script
-      shell: |
-        wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh
-        bash install.sh ed8484bec
-      args:
-        warn: false  # 忽略 shell 命令警告
+      expect:
+        # 组合下载脚本和执行脚本的命令
+        command: wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
+        responses:
+          # 当安装脚本提示是否安装到 /www 目录时，自动回复 'y'
+          'Do you want to install Bt-Panel to the /www directory now?(y/n):': 'y'
+        # 设置命令执行的超时时间为 600 秒
+        timeout: 800
+      # 将命令执行结果存储在 res 变量中
+      register: res
+
+    # 当安装成功（返回码为 0）时，打印安装脚本的输出信息
+    - name: Print installation success output
+      debug:
+        var: res.stdout_lines
+      when: res.rc == 0
+
+    # 当安装失败（返回码不为 0）时，打印安装失败的主机信息
+    - name: Print installation failure message
+      debug:
+        msg: "Baota install failed on {{ inventory_hostname }}"
+      when: res.rc != 0
