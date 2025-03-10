@@ -15,7 +15,7 @@
     - name: Download and execute Baota Panel installation script
       expect:
         # 组合下载脚本和执行脚本的命令
-        command: wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
+        command: wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
         responses:
           # 当安装脚本提示是否安装到 /www 目录时，自动回复 'y'
           'Do you want to install Bt-Panel to the /www directory now?(y/n):': 'y'
