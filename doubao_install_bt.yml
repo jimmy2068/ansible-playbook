@@ -1,58 +1,28 @@
 ---
 - name: Install Baota Panel on Ubuntu
-  hosts: ubuntu_servers
-  become: yes
-  gather_facts: yes
+  hosts: ubuntu_servers  # 这里的 ubuntu_servers 是你在 AWX 中定义的主机组名称
+  become: true  # 使用 root 权限执行任务
+  gather_facts: true
 
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
+      register: apt_update_result
+      until: apt_update_result is success
+      retries: 5
+      delay: 2
 
     - name: Install necessary packages
       apt:
         name:
           - wget
           - curl
-          - expect
         state: present
 
-    - name: Create expect script for Baota installation
-      copy:
-        content: |
-          #!/usr/bin/expect
-          set timeout -1
-          spawn wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh
-          expect eof
-          spawn bash install.sh
-          expect {
-            "Do you want to continue? [y/n]" {
-              send "y\r"
-              exp_continue
-            }
-            eof
-          }
-        dest: /tmp/install_bt.exp
-        mode: '0755'
-
-    - name: Run expect script to install Baota Panel
-      shell: /tmp/install_bt.exp
-      register: bt_install_result
-      ignore_errors: yes
-
-    - name: Display Baota Panel installation result
-      debug:
-        var: bt_install_result.stdout_lines
-
-    - name: Extract Baota Panel account information
-      set_fact:
-        bt_account_info: "{{ bt_install_result.stdout_lines | select('match', '.*(username|password).*') | list }}"
-
-    - name: Display Baota Panel account information
-      debug:
-        var: bt_account_info
-
-    - name: Remove expect script
-      file:
-        path: /tmp/install_bt.exp
-        state: absent
+    - name: Download and execute Baota Panel installation script
+      shell: |
+        wget -O install.sh http://download.bt.cn/install/install-ubuntu_6.0.sh
+        bash install.sh ed8484bec
+      args:
+        warn: false  # 忽略 shell 命令警告
